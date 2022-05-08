@@ -1,0 +1,141 @@
+#
+# This is free software, lisence use MIT.
+# 
+# Copyright (C) 2019 P3TERX <https://p3terx.com>
+# Copyright (C) 2019 KFERMercer <KFER.Mercer@gmail.com>
+# 
+# <https://github.com/KFERMercer/OpenWrt-CI>
+# 
+
+name: 编译最新RM2100
+
+on:
+  repository_dispatch:
+    types: [lean, RM2100]
+  workflow_dispatch:
+  schedule:
+    - cron: 0 18 * * *
+  watch:
+    types: started
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+
+    - name: Space cleanup
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        sudo -E apt-get -qq update
+        sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
+        sudo -E apt-get -qq autoremove --purge
+        sudo -E apt-get -qq clean
+        sudo timedatectl set-timezone "Asia/Shanghai"
+          
+    - name: Clone source code
+      run: |
+        git clone https://github.com/coolsnowwolf/lede.git lede
+        
+    - name: Update feeds
+      run: |
+        cd lede
+        sudo sed -i '$asrc-git helloworld https://github.com/fw876/helloworld' ./feeds.conf.default
+        ./scripts/feeds clean
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+        sudo sed -i '68s/89/93/g' target/linux/ramips/patches-5.4/102-mt7621-fix-cpu-clk-add-clkdev.patch
+        sudo sed -i '113s/bus_clk/bus_clk,i/g' target/linux/ramips/patches-5.4/102-mt7621-fix-cpu-clk-add-clkdev.patch
+        sudo sed -i '156a +               pll &= ~(0x7ff);\n+               pll |=  (0x362);\n+               rt_memc_w32(pll,MEMC_REG_CPU_PLL);\n+               for(i=0;i<1024;i++);' target/linux/ramips/patches-5.4/102-mt7621-fix-cpu-clk-add-clkdev.patch
+        sudo sed -i 's/5.4/5.10/g' ./target/linux/ramips/Makefile
+
+    - name: Generate configuration file
+      run: |
+          cd lede
+          rm -f ./.config*
+          touch ./.config
+          # 常用LuCI插件选择:
+          cat >> .config <<EOF
+          CONFIG_TARGET_ramips=y
+          CONFIG_TARGET_ramips_mt7621=y
+          CONFIG_TARGET_ramips_mt7621_DEVICE_xiaomi_redmi-router-ac2100=y
+          CONFIG_IPV6=n
+          CONFIG_PACKAGE_luci-app-adbyby-plus=y
+          CONFIG_PACKAGE_luci-app-vsftpd=n
+          CONFIG_PACKAGE_luci-app-xlnetacc=n
+          CONFIG_PACKAGE_luci-app-accesscontrol=n
+          CONFIG_PACKAGE_luci-app-autoreboot=n
+          CONFIG_PACKAGE_luci-app-nlbwmon=n
+          CONFIG_PACKAGE_luci-app-v2ray-server=n
+          CONFIG_PACKAGE_luci-app-unblockmusic=n
+          CONFIG_PACKAGE_autosamba=n
+          CONFIG_PACKAGE_luci-app-uugamebooster=n
+          CONFIG_PACKAGE_ipv6helper=n
+          CONFIG_PACKAGE_luci-app-samba=n
+          CONFIG_PACKAGE_luci-app-automount=n
+          CONFIG_PACKAGE_luci-app-sqm=n
+          CONFIG_PACKAGE_luci-app-wsdd2=n
+          CONFIG_PACKAGE_luci-app-airplay2=n
+          CONFIG_PACKAGE_luci-app-music-remote-center=n
+          CONFIG_PACKAGE_luci-app-qbittorrent=n
+          CONFIG_PACKAGE_luci-app-webadmin=n
+          CONFIG_PACKAGE_luci-app-amule=n
+          CONFIG_PACKAGE_luci-app-openvpn-server=n
+          CONFIG_PACKAGE_luci-app-ipsec-vpnd=n
+          CONFIG_PACKAGE_luci-app-softethervpn=n
+          CONFIG_PACKAGE_luci-app-ttyd=y
+          CONFIG_PACKAGE_luci-app-ddns=n
+          CONFIG_PACKAGE_luci-app-filetransfer=n
+          CONFIG_PACKAGE_luci-app-ssr-plus=y
+          CONFIG_PACKAGE_luci-app-zerotier=y
+          CONFIG_PACKAGE_luci-app-turboacc=y
+          #CONFIG_PACKAGE_TURBOACC_INCLUDE_SHORTCUT_FE=y
+          #CONFIG_PACKAGE_TURBOACC_INCLUDE_OFFLOADING=n
+          CONFIG_PACKAGE_TURBOACC_INCLUDE_DNSPROXY=n
+          CONFIG_PACKAGE_TURBOACC_INCLUDE_BBR_CCA=y
+          CONFIG_PACKAGE_luci-app-qbittorrent=n
+          CONFIG_PACKAGE_odhcpd-ipv6only=n
+          CONFIG_PACKAGE_odhcp6c=n
+          CONFIG_PACKAGE_ip6tables=n
+          CONFIG_PACKAGE_luci-app-mtwifi=y
+          CONFIG_PACKAGE_kmod-mt7603e=y
+          CONFIG_PACKAGE_kmod-mt7615d=y
+          EOF
+
+          sed -i 's/^[ \t]*//g' ./.config
+          make defconfig
+        
+    - name: Make download
+      run: |
+          cd lede
+          make download -j8
+          find dl -size -1024c -exec rm -f {} \;
+          
+    - name: Compile firmware
+      run: |
+          cd lede
+          make -j$(nproc) || make -j1 V=s
+          echo "======================="
+          echo "Space usage:"
+          echo "======================="
+          df -h
+          echo "======================="
+          du -h --max-depth=1 ./ --exclude=build_dir --exclude=bin
+          du -h --max-depth=1 ./build_dir
+          du -h --max-depth=1 ./bin
+          echo "::set-output name=status::success"
+          grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
+          [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+          echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+    - name: Prepare artifact
+      run: find ./lede/bin/targets/ -type d -name "packages" | xargs rm -rf {}
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@main
+      with:
+          name: OpenWrt_firmware${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+          path: ./lede/bin/targets/
