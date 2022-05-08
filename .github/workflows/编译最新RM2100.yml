@@ -68,12 +68,12 @@ jobs:
           CONFIG_PACKAGE_luci-app-vsftpd=n
           CONFIG_PACKAGE_luci-app-xlnetacc=n
           CONFIG_PACKAGE_luci-app-accesscontrol=n
-          CONFIG_PACKAGE_luci-app-autoreboot=n
+          CONFIG_PACKAGE_luci-app-autoreboot=y
           CONFIG_PACKAGE_luci-app-nlbwmon=n
           CONFIG_PACKAGE_luci-app-v2ray-server=n
-          CONFIG_PACKAGE_luci-app-unblockmusic=n
+          CONFIG_PACKAGE_luci-app-unblockmusic=y
           CONFIG_PACKAGE_autosamba=n
-          CONFIG_PACKAGE_luci-app-uugamebooster=n
+          CONFIG_PACKAGE_luci-app-uugamebooster=y
           CONFIG_PACKAGE_ipv6helper=n
           CONFIG_PACKAGE_luci-app-samba=n
           CONFIG_PACKAGE_luci-app-automount=n
@@ -84,17 +84,21 @@ jobs:
           CONFIG_PACKAGE_luci-app-qbittorrent=n
           CONFIG_PACKAGE_luci-app-webadmin=n
           CONFIG_PACKAGE_luci-app-amule=n
+          CONFIG_PACKAGE_luci-app-ramfree=y
           CONFIG_PACKAGE_luci-app-openvpn-server=n
           CONFIG_PACKAGE_luci-app-ipsec-vpnd=n
           CONFIG_PACKAGE_luci-app-softethervpn=n
+          CONFIG_PACKAGE_luci-app-hd-idle=y
           CONFIG_PACKAGE_luci-app-ttyd=y
           CONFIG_PACKAGE_luci-app-ddns=n
-          CONFIG_PACKAGE_luci-app-filetransfer=n
+          CONFIG_PACKAGE_luci-app-jd-dailybonus=y
+          CONFIG_PACKAGE_luci-app-filetransfer=y
+          CONFIG_PACKAGE_luci-app-serverchan=y
           CONFIG_PACKAGE_luci-app-ssr-plus=y
           CONFIG_PACKAGE_luci-app-zerotier=y
           CONFIG_PACKAGE_luci-app-turboacc=y
-          #CONFIG_PACKAGE_TURBOACC_INCLUDE_SHORTCUT_FE=y
-          #CONFIG_PACKAGE_TURBOACC_INCLUDE_OFFLOADING=n
+          CONFIG_PACKAGE_TURBOACC_INCLUDE_SHORTCUT_FE=y
+          CONFIG_PACKAGE_TURBOACC_INCLUDE_OFFLOADING=n
           CONFIG_PACKAGE_TURBOACC_INCLUDE_DNSPROXY=n
           CONFIG_PACKAGE_TURBOACC_INCLUDE_BBR_CCA=y
           CONFIG_PACKAGE_luci-app-qbittorrent=n
@@ -104,6 +108,7 @@ jobs:
           CONFIG_PACKAGE_luci-app-mtwifi=y
           CONFIG_PACKAGE_kmod-mt7603e=y
           CONFIG_PACKAGE_kmod-mt7615d=y
+          CONFIG_PACKAGE_luci-theme-argon=y
           EOF
 
           sed -i 's/^[ \t]*//g' ./.config
